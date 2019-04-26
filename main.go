@@ -62,15 +62,20 @@ func CreateBracket(w http.ResponseWriter, r *http.Request) {
 	}
 	competitorType := chi.URLParam(r, "competitorType")
 	selectionType := chi.URLParam(r, "selectionType")
-	size, err := strconv.Atoi(r.FormValue("size"))
-	if err != nil {
-		fmt.Println(err)
-		render.JSON(w, r, Error{Reason: err, StatusCode: 500})
-		return
-	}
-	if math.Ceil(math.Log2(float64(size))) != math.Floor(math.Log2(float64(size))) {
-		render.JSON(w, r, Error{Reason: errors.New("invalid size(must be a power of 2)"), StatusCode: 500})
-		return
+	size := r.FormValue("size")
+	var sizeVal int
+	var err error
+	if size != "auto" {
+		sizeVal, err = strconv.Atoi(size)
+		if err != nil {
+			fmt.Println(err)
+			render.JSON(w, r, Error{Reason: err, StatusCode: 500})
+			return
+		}
+		if math.Ceil(math.Log2(float64(sizeVal))) != math.Floor(math.Log2(float64(sizeVal))) {
+			render.JSON(w, r, Error{Reason: errors.New("invalid sizeVal(must be a power of 2)"), StatusCode: 500})
+			return
+		}
 	}
 	var competitors []Competitor
 
@@ -194,10 +199,13 @@ func CreateBracket(w http.ResponseWriter, r *http.Request) {
 			return rand.Float64() < 0.5
 		}
 	})
-	if len(competitors) > size {
-		competitors = competitors[:size]
+	if size == "auto" {
+		sizeVal = len(competitors)
 	}
-	numCompetitors := size
+	if len(competitors) > sizeVal {
+		competitors = competitors[:sizeVal]
+	}
+	numCompetitors := sizeVal
 	for ok := (numCompetitors / 2) > len(competitors); ok; ok = (numCompetitors / 2) > len(competitors) {
 		numCompetitors = numCompetitors / 2
 	}
