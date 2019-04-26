@@ -148,7 +148,7 @@ func CreateBracket(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		} else if competitorType == "track" {
-			tracks, err := client.GetPlaylistTracksOpt(spotify.ID(from), nil, "items(track(name,popularity,album(images))),next")
+			tracks, err := client.GetPlaylistTracksOpt(spotify.ID(from), &spotify.Options{Country: &market}, "items(track(name,popularity,album(images))),next")
 			if err != nil {
 				fmt.Println(err)
 				render.JSON(w, r, Error{Reason: err, StatusCode: 500})
@@ -172,7 +172,7 @@ func CreateBracket(w http.ResponseWriter, r *http.Request) {
 						render.JSON(w, r, Error{Reason: err, StatusCode: 500})
 						return
 					}
-					tracks, err = client.GetPlaylistTracksOpt(spotify.ID(from), &spotify.Options{Offset: &offset, Country: &market}, "tracks.items(track(name,popularity,album(images))),tracks.next")
+					tracks, err = client.GetPlaylistTracksOpt(spotify.ID(from), &spotify.Options{Offset: &offset, Country: &market}, "items(track(name,popularity,album(images))),next")
 					if err != nil {
 						fmt.Println(err)
 						render.JSON(w, r, Error{Reason: err, StatusCode: 500})
@@ -187,6 +187,8 @@ func CreateBracket(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(competitors, func(i int, j int) bool {
 		if competitors[i].Popularity != competitors[j].Popularity && r.FormValue("seeded") == "true" {
 			return competitors[i].Popularity > competitors[j].Popularity
+		} else if r.FormValue("seeded") == "true" {
+			return true
 		} else {
 			rand.Seed(time.Now().UnixNano())
 			return rand.Float64() < 0.5
