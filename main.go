@@ -57,7 +57,7 @@ func Routes() *chi.Mux {
 }
 
 func CreateBracket(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "https://d2150a09.ngrok.io")
+	w.Header().Set("Access-Control-Allow-Origin", "http://174.16.217.76")
 	competitorType := chi.URLParam(r, "competitorType")
 	selectionType := chi.URLParam(r, "selectionType")
 	size, err := strconv.Atoi(r.FormValue("size"))
