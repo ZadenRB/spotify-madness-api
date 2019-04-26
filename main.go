@@ -57,13 +57,19 @@ func Routes() *chi.Mux {
 }
 
 func CreateBracket(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://174.16.217.76:3000")
+	if r.Header.Get("Origin") == "http://localhost:3000" || r.Header.Get("Origin") == "http://174.16.217.76:3000" {
+		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	}
 	competitorType := chi.URLParam(r, "competitorType")
 	selectionType := chi.URLParam(r, "selectionType")
 	size, err := strconv.Atoi(r.FormValue("size"))
 	if err != nil {
 		fmt.Println(err)
 		render.JSON(w, r, Error{Reason: err, StatusCode: 500})
+		return
+	}
+	if math.Ceil(math.Log2(float64(size))) != math.Floor(math.Log2(float64(size))) {
+		render.JSON(w, r, Error{Reason: errors.New("invalid size(must be a power of 2)"), StatusCode: 500})
 		return
 	}
 	var competitors []Competitor
@@ -130,17 +136,10 @@ func CreateBracket(w http.ResponseWriter, r *http.Request) {
 				for i, competitor := range competitors {
 					if competitor.Title == competitorToAdd.Title || competitor.Images[0] == competitorToAdd.Images[0] || (strings.HasPrefix(competitor.Title, competitorToAdd.Title) && (strings.Contains(competitor.Title, "Deluxe") || strings.Contains(competitor.Title, "Extended") || strings.Contains(competitor.Title, "Exclusive"))) || (strings.HasPrefix(competitorToAdd.Title, competitor.Title) && (strings.Contains(competitorToAdd.Title, "Deluxe") || strings.Contains(competitorToAdd.Title, "Extended") || strings.Contains(competitorToAdd.Title, "Exclusive"))) {
 						duplicate = true
-						if competitorToAdd.Popularity > competitor.Popularity {
+						if len(competitor.Title) < len(competitorToAdd.Title) {
+							competitors[i] = competitor
+						} else {
 							competitors[i] = competitorToAdd
-						} else if competitorToAdd.Popularity == competitor.Popularity {
-							if len(competitorToAdd.Title) < len(competitor.Title) {
-								competitors[i] = competitorToAdd
-							} else if len(competitorToAdd.Title) == len(competitor.Title) {
-								rand.Seed(time.Now().UnixNano())
-								if rand.Float32() < 0.5 {
-									competitors[i] = competitorToAdd
-								}
-							}
 						}
 					}
 				}
@@ -189,7 +188,8 @@ func CreateBracket(w http.ResponseWriter, r *http.Request) {
 		if competitors[i].Popularity != competitors[j].Popularity && r.FormValue("seeded") == "true" {
 			return competitors[i].Popularity > competitors[j].Popularity
 		} else {
-			return true
+			rand.Seed(time.Now().UnixNano())
+			return rand.Float64() < 0.5
 		}
 	})
 	if len(competitors) > size {
