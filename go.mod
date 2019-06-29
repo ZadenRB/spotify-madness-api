@@ -19,10 +19,10 @@ require (
 	github.com/mattn/go-isatty v0.0.7 // indirect
 	github.com/mattn/go-shellwords v1.0.5 // indirect
 	github.com/rjeczalik/notify v0.9.2 // indirect
-	github.com/zmb3/spotify v0.0.0-20190210152806-94cbe6dc5cc2 // indirect
+	github.com/zmb3/spotify v0.0.0-20190210152806-94cbe6dc5cc2
 	golang.org/x/crypto v0.0.0-20190411191339-88737f569e3a // indirect
 	golang.org/x/net v0.0.0-20190415214537-1da14a5a36f2 // indirect
-	golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a // indirect
+	golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a
 	golang.org/x/sync v0.0.0-20190412183630-56d357773e84 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0 // indirect

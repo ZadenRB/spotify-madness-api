@@ -51,7 +51,7 @@ func Routes() *chi.Mux {
 		middleware.Recoverer,
 	)
 
-	router.Get("/bracket/{competitorType}/{selectionType}", CreateBracket)
+	router.Get("/bracket/{competitorType}", CreateBracket)
 
 	return router
 }
@@ -61,7 +61,6 @@ func CreateBracket(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 	}
 	competitorType := chi.URLParam(r, "competitorType")
-	selectionType := chi.URLParam(r, "selectionType")
 	size := r.FormValue("size")
 	var sizeVal int
 	var err error
@@ -79,110 +78,103 @@ func CreateBracket(w http.ResponseWriter, r *http.Request) {
 	}
 	var competitors []Competitor
 
-	if selectionType == "auto" {
-		from := r.FormValue("from")
+	from := r.FormValue("from")
+	market := spotify.CountryUSA
+	if competitorType == "album" {
+		albumType := spotify.AlbumType(spotify.AlbumTypeAlbum)
+		albums, err := client.GetArtistAlbumsOpt(spotify.ID(from), &spotify.Options{Country: &market}, &albumType)
 		if err != nil {
 			fmt.Println(err)
 			render.JSON(w, r, Error{Reason: err, StatusCode: 500})
 			return
 		}
-		market := spotify.CountryUSA
-		if competitorType == "album" {
-			albumType := spotify.AlbumType(spotify.AlbumTypeAlbum)
-			albums, err := client.GetArtistAlbumsOpt(spotify.ID(from), &spotify.Options{Country: &market}, &albumType)
-			if err != nil {
-				fmt.Println(err)
-				render.JSON(w, r, Error{Reason: err, StatusCode: 500})
-				return
+		var albumIDs []spotify.ID
+		//Fetch all album IDs
+		for {
+			for _, album := range albums.Albums {
+				albumIDs = append(albumIDs, album.ID)
 			}
-			var albumIDs []spotify.ID
-			//Fetch all album IDs
-			for {
-				for _, album := range albums.Albums {
-					albumIDs = append(albumIDs, album.ID)
-				}
-				if albums.Next != "" {
-					nextURL, err := url.Parse(albums.Next)
-					if err != nil {
-						fmt.Println(err)
-						render.JSON(w, r, Error{Reason: err, StatusCode: 500})
-						return
-					}
-					offset, err := strconv.Atoi(nextURL.Query().Get("offset"))
-					if err != nil {
-						fmt.Println(err)
-						render.JSON(w, r, Error{Reason: err, StatusCode: 500})
-						return
-					}
-					albums, err = client.GetArtistAlbumsOpt(spotify.ID(from), &spotify.Options{Offset: &offset, Country: &market}, &albumType)
-					if err != nil {
-						fmt.Println(err)
-						render.JSON(w, r, Error{Reason: err, StatusCode: 500})
-						return
-					}
-				} else {
-					break
-				}
-			}
-			for _, albumID := range albumIDs {
-				fullAlbum, err := client.GetAlbum(albumID)
+			if albums.Next != "" {
+				nextURL, err := url.Parse(albums.Next)
 				if err != nil {
 					fmt.Println(err)
 					render.JSON(w, r, Error{Reason: err, StatusCode: 500})
 					return
 				}
-				competitorToAdd := Competitor{
-					Title:      fullAlbum.Name,
-					Popularity: fullAlbum.Popularity,
-					Images:     fullAlbum.Images,
+				offset, err := strconv.Atoi(nextURL.Query().Get("offset"))
+				if err != nil {
+					fmt.Println(err)
+					render.JSON(w, r, Error{Reason: err, StatusCode: 500})
+					return
 				}
-				duplicate := false
-				//Deal with deluxe, clean versions, etc. by popularity, then shorter name
-				for i, competitor := range competitors {
-					if competitor.Title == competitorToAdd.Title || competitor.Images[0] == competitorToAdd.Images[0] || (strings.HasPrefix(competitor.Title, competitorToAdd.Title) && (strings.Contains(competitor.Title, "Deluxe") || strings.Contains(competitor.Title, "Extended") || strings.Contains(competitor.Title, "Exclusive"))) || (strings.HasPrefix(competitorToAdd.Title, competitor.Title) && (strings.Contains(competitorToAdd.Title, "Deluxe") || strings.Contains(competitorToAdd.Title, "Extended") || strings.Contains(competitorToAdd.Title, "Exclusive"))) {
-						duplicate = true
-						if len(competitor.Title) < len(competitorToAdd.Title) {
-							competitors[i] = competitor
-						} else {
-							competitors[i] = competitorToAdd
-						}
-					}
+				albums, err = client.GetArtistAlbumsOpt(spotify.ID(from), &spotify.Options{Offset: &offset, Country: &market}, &albumType)
+				if err != nil {
+					fmt.Println(err)
+					render.JSON(w, r, Error{Reason: err, StatusCode: 500})
+					return
 				}
-				if !duplicate {
-					competitors = append(competitors, competitorToAdd)
-				}
+			} else {
+				break
 			}
-		} else if competitorType == "track" {
-			tracks, err := client.GetPlaylistTracksOpt(spotify.ID(from), &spotify.Options{Country: &market}, "items(track(name,popularity,album(images))),next")
+		}
+		for _, albumID := range albumIDs {
+			fullAlbum, err := client.GetAlbum(albumID)
 			if err != nil {
 				fmt.Println(err)
 				render.JSON(w, r, Error{Reason: err, StatusCode: 500})
 				return
 			}
-			for ok := true; ok; ok = tracks.Next != "" {
-				for _, track := range tracks.Tracks {
-					track := track.Track
-					competitors = append(competitors, Competitor{Title: track.Name, Popularity: track.Popularity, Images: track.Album.Images})
+			competitorToAdd := Competitor{
+				Title:      fullAlbum.Name,
+				Popularity: fullAlbum.Popularity,
+				Images:     fullAlbum.Images,
+			}
+			duplicate := false
+			//Deal with deluxe, clean versions, etc. by popularity, then shorter name
+			for i, competitor := range competitors {
+				if competitor.Title == competitorToAdd.Title || competitor.Images[0] == competitorToAdd.Images[0] || (strings.HasPrefix(competitor.Title, competitorToAdd.Title) && (strings.Contains(competitor.Title, "Deluxe") || strings.Contains(competitor.Title, "Extended") || strings.Contains(competitor.Title, "Exclusive"))) || (strings.HasPrefix(competitorToAdd.Title, competitor.Title) && (strings.Contains(competitorToAdd.Title, "Deluxe") || strings.Contains(competitorToAdd.Title, "Extended") || strings.Contains(competitorToAdd.Title, "Exclusive"))) {
+					duplicate = true
+					if len(competitor.Title) < len(competitorToAdd.Title) {
+						competitors[i] = competitor
+					} else {
+						competitors[i] = competitorToAdd
+					}
 				}
-				if tracks.Next != "" {
-					nextURL, err := url.Parse(tracks.Next)
-					if err != nil {
-						fmt.Println(err)
-						render.JSON(w, r, Error{Reason: err, StatusCode: 500})
-						return
-					}
-					offset, err := strconv.Atoi(nextURL.Query().Get("offset"))
-					if err != nil {
-						fmt.Println(err)
-						render.JSON(w, r, Error{Reason: err, StatusCode: 500})
-						return
-					}
-					tracks, err = client.GetPlaylistTracksOpt(spotify.ID(from), &spotify.Options{Offset: &offset, Country: &market}, "items(track(name,popularity,album(images))),next")
-					if err != nil {
-						fmt.Println(err)
-						render.JSON(w, r, Error{Reason: err, StatusCode: 500})
-						return
-					}
+			}
+			if !duplicate {
+				competitors = append(competitors, competitorToAdd)
+			}
+		}
+	} else if competitorType == "track" {
+		tracks, err := client.GetPlaylistTracksOpt(spotify.ID(from), &spotify.Options{Country: &market}, "items(track(name,popularity,album(images))),next")
+		if err != nil {
+			fmt.Println(err)
+			render.JSON(w, r, Error{Reason: err, StatusCode: 500})
+			return
+		}
+		for ok := true; ok; ok = tracks.Next != "" {
+			for _, track := range tracks.Tracks {
+				track := track.Track
+				competitors = append(competitors, Competitor{Title: track.Name, Popularity: track.Popularity, Images: track.Album.Images})
+			}
+			if tracks.Next != "" {
+				nextURL, err := url.Parse(tracks.Next)
+				if err != nil {
+					fmt.Println(err)
+					render.JSON(w, r, Error{Reason: err, StatusCode: 500})
+					return
+				}
+				offset, err := strconv.Atoi(nextURL.Query().Get("offset"))
+				if err != nil {
+					fmt.Println(err)
+					render.JSON(w, r, Error{Reason: err, StatusCode: 500})
+					return
+				}
+				tracks, err = client.GetPlaylistTracksOpt(spotify.ID(from), &spotify.Options{Offset: &offset, Country: &market}, "items(track(name,popularity,album(images))),next")
+				if err != nil {
+					fmt.Println(err)
+					render.JSON(w, r, Error{Reason: err, StatusCode: 500})
+					return
 				}
 			}
 		}
@@ -283,6 +275,4 @@ func main() {
 	}()
 
 	log.Fatal(http.ListenAndServe(":8000", router))
-
-	quit <- true
 }
