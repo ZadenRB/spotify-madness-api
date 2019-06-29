@@ -27,7 +27,7 @@ type Error struct {
 }
 
 type Competitor struct {
-	Title      string
+	Title      *string
 	Popularity int
 	Images     []spotify.Image
 }
@@ -125,16 +125,16 @@ func CreateBracket(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			competitorToAdd := Competitor{
-				Title:      fullAlbum.Name,
+				Title:      &fullAlbum.Name,
 				Popularity: fullAlbum.Popularity,
 				Images:     fullAlbum.Images,
 			}
 			duplicate := false
 			//Deal with deluxe, clean versions, etc. by popularity, then shorter name
 			for i, competitor := range competitors {
-				if competitor.Title == competitorToAdd.Title || competitor.Images[0] == competitorToAdd.Images[0] || (strings.HasPrefix(competitor.Title, competitorToAdd.Title) && (strings.Contains(competitor.Title, "Deluxe") || strings.Contains(competitor.Title, "Extended") || strings.Contains(competitor.Title, "Exclusive"))) || (strings.HasPrefix(competitorToAdd.Title, competitor.Title) && (strings.Contains(competitorToAdd.Title, "Deluxe") || strings.Contains(competitorToAdd.Title, "Extended") || strings.Contains(competitorToAdd.Title, "Exclusive"))) {
+				if competitor.Title == competitorToAdd.Title || competitor.Images[0] == competitorToAdd.Images[0] || (strings.HasPrefix(*competitor.Title, *competitorToAdd.Title) && (strings.Contains(*competitor.Title, "Deluxe") || strings.Contains(*competitor.Title, "Extended") || strings.Contains(*competitor.Title, "Exclusive"))) || (strings.HasPrefix(*competitorToAdd.Title, *competitor.Title) && (strings.Contains(*competitorToAdd.Title, "Deluxe") || strings.Contains(*competitorToAdd.Title, "Extended") || strings.Contains(*competitorToAdd.Title, "Exclusive"))) {
 					duplicate = true
-					if len(competitor.Title) < len(competitorToAdd.Title) {
+					if len(*competitor.Title) < len(*competitorToAdd.Title) {
 						competitors[i] = competitor
 					} else {
 						competitors[i] = competitorToAdd
@@ -155,7 +155,7 @@ func CreateBracket(w http.ResponseWriter, r *http.Request) {
 		for ok := true; ok; ok = tracks.Next != "" {
 			for _, track := range tracks.Tracks {
 				track := track.Track
-				competitors = append(competitors, Competitor{Title: track.Name, Popularity: track.Popularity, Images: track.Album.Images})
+				competitors = append(competitors, Competitor{Title: &track.Name, Popularity: track.Popularity, Images: track.Album.Images})
 			}
 			if tracks.Next != "" {
 				nextURL, err := url.Parse(tracks.Next)
@@ -226,12 +226,12 @@ func CreateBracket(w http.ResponseWriter, r *http.Request) {
 		var top *Competitor
 		var bottom *Competitor
 		if matches[i][0] > len(competitors) {
-			top = &Competitor{Title: "Bye"}
+			top = &Competitor{Title: nil}
 		} else {
 			top = &competitors[matches[i][0]-1]
 		}
 		if matches[i][1] > len(competitors) {
-			bottom = &Competitor{Title: "Bye"}
+			bottom = &Competitor{Title: nil}
 		} else {
 			bottom = &competitors[matches[i][1]-1]
 		}
