@@ -57,7 +57,7 @@ func Routes() *chi.Mux {
 }
 
 func CreateBracket(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Origin") == "http://localhost:3000" || r.Header.Get("Origin") == "http://174.16.217.76:3000" {
+	if r.Header.Get("Origin") == "http://localhost:3000" || r.Header.Get("Origin") == "https://zadenrb.github.io" {
 		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 	}
 	competitorType := chi.URLParam(r, "competitorType")
