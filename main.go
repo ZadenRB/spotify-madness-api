@@ -274,5 +274,10 @@ func main() {
 		}
 	}()
 
-	log.Fatal(http.ListenAndServe(":8000", router))
+	port := os.Getenv("PORT")
+	if port == "" {
+		log.Fatal(http.ListenAndServe(":8000", router))
+	} else {
+		log.Fatal(http.ListenAndServe(":" + port, router))
+	}
 }
