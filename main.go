@@ -152,7 +152,8 @@ func CreateBracket(w http.ResponseWriter, r *http.Request) {
 			render.JSON(w, r, Error{Reason: err, StatusCode: 500})
 			return
 		}
-		for ok := true; ok; ok = tracks.Next != "" {
+		for ok := true; ok; {
+			ok = tracks.Next != ""
 			for _, track := range tracks.Tracks {
 				track := track.Track
 				competitors = append(competitors, Competitor{Title: &track.Name, Popularity: track.Popularity, Images: track.Album.Images})
